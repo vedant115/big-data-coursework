@@ -1,0 +1,69 @@
+""" Create Directory"""
+hdfs dfs -mkdir /folder_name
+hdfs dfs -mkdir -p /multiple_nested_folders
+
+""" Upload the input files to HDFS """
+hdfs dfs -put /path_to_file /path_where_to_upload
+
+""" List all files present """
+hdfs dfs -ls /path_to_dir
+
+""" Write file """
+hdfs dfs -cat /path_to_file
+
+""" Clean Up """
+hdfs dfs -rm -r /path
+
+""" Compile the Java code """
+javac -classpath `hadoop classpath` -d . *.java
+
+""" Create a JAR file """
+jar -cvf name.jar -C . .
+
+""" Run the MapReduce Job """
+hadoop jar file_name.jar class_name /path_to_input_file /path_to_output_file
+hadoop jar file_name.jar class_name
+
+""" Hadoop Streaming Path """
+hadoop jar /home/vedant/hadoop-3.4.1/share/hadoop/tools/lib/hadoop-streaming-3.4.1.jar     
+-input /LabAssign4/input/TbDiseaseSymptoms.csv     
+-output /LabAssign4/output     
+-mapper tb_mapper.py     
+-reducer tb_reducer.py     
+-file tb_mapper.py     
+-file tb_reducer.py
+
+
+""" Hive """
+beeline -u jdbc:hive2://
+
+healthcare_data = LOAD '/Healthcare_Assign/input/healthcare_dataset.csv' USING PigStorage(',') AS (
+    Name:chararray, Age:int, Gender:chararray, BloodType:chararray, MedicalCondition:chararray,
+    DateOfAdmission:chararray, Doctor:chararray, Hospital:chararray, InsuranceProvider:chararray,
+    BillingAmount:float, RoomNumber:int, AdmissionType:chararray, DischargeDate:chararray,
+    Medication:chararray, TestResults:chararray
+);
+
+filtered_data = FILTER healthcare_data BY MedicalCondition == 'Diabetes';
+
+
+
+
+
+""" Mahout """
+
+mahout seqdirectory \
+  -i hdfs://localhost:9000/LabAssign6/input/diabetes.csv \
+  -o hdfs://localhost:9000/LabAssign6/input/diabetes.seq \
+  -c UTF-8
+
+mahout seq2sparse \
+  -nv \
+  -i hdfs://localhost:9000/LabAssign6/input/diabetes.seq \
+  -o hdfs://localhost:9000/LabAssign6/output/diabetes-vectors-sparse \
+  --maxDFPercent 85 \
+  --namedVector
+
+
+grouped_data = GROUP filtered_data BY Gender;
+DUMP grouped_data;
