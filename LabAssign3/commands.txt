@@ -1,0 +1,14 @@
+python3 program_name.py -r hadoop hdfs://input_file_path --output-dir hdfs://output_path
+
+hdfs dfs -cat /output_file_path
+
+Example - 
+// make input directory and upload dataset
+
+python3 total_billing_by_hospital.py -r hadoop hdfs:///Healthcare_Assign/input/healthcare_dataset.csv --output-dir hdfs:///Healthcare_Assign/output
+
+hdfs dfs -cat /Healthcare_Assign/output/part-00000
+
+python3 average_stay_by_condition.py -r hadoop hdfs:///Healthcare_Assign/input/healthcare_dataset.csv --output-dir hdfs:///Healthcare_Assign/output2
+
+hdfs dfs -cat /Healthcare_Assign/output2/part-00000
