@@ -1,0 +1,63 @@
+val df = spark.read.option("header", "true").csv("file:///home/vedant/BDALab/LabAssign8/Tb disease symptoms.csv")
+
+val cleanedDF = df.columns.foldLeft(df)((tempDF, colName) => tempDF.withColumnRenamed(colName, colName.trim.replaceAll("\\s+", "_").replaceAll("^_|_$", "").toLowerCase))
+     
+cleanedDF.printSchema()
+
+import org.apache.spark.graphx.{VertexId, Edge, Graph}
+
+// Create an RDD of vertices from the cleaned DataFrame, converting symptom columns from String to Int
+val vertices = cleanedDF.rdd.map { row =>
+  // Convert the "no" field to Long. (Assuming the "no" column is a unique identifier.)
+  val vertexId = row.getAs[String]("no").toLong
+  
+  val name = row.getAs[String]("name")
+  val gender = row.getAs[String]("gender")
+  
+  // Convert each symptom column from String to Int using .toInt
+  val symptoms = Seq(
+    row.getAs[String]("fever_for_two_weeks").toInt,
+    row.getAs[String]("coughing_blood").toInt,
+    row.getAs[String]("sputum_mixed_with_blood").toInt,
+    row.getAs[String]("night_sweats").toInt,
+    row.getAs[String]("chest_pain").toInt,
+    row.getAs[String]("back_pain_in_certain_parts").toInt,
+    row.getAs[String]("shortness_of_breath").toInt,
+    row.getAs[String]("weight_loss").toInt,
+    row.getAs[String]("body_feels_tired").toInt,
+    row.getAs[String]("lumps_that_appear_around_the_armpits_and_neck").toInt,
+    row.getAs[String]("cough_and_phlegm_continuously_for_two_weeks_to_four_weeks").toInt,
+    row.getAs[String]("swollen_lymph_nodes").toInt,
+    row.getAs[String]("loss_of_appetite").toInt
+  )
+  
+  (vertexId, (name, gender, symptoms))
+}
+
+val verticesList = vertices.collect()
+
+import scala.collection.mutable.ArrayBuffer
+import org.apache.spark.graphx.Edge
+
+val edgesBuffer = new ArrayBuffer[Edge[Int]]()
+
+for (i <- verticesList.indices; j <- (i + 1) until verticesList.length) {
+  val (id1, (_, _, symptoms1)) = verticesList(i)
+  val (id2, (_, _, symptoms2)) = verticesList(j)
+  
+  // Calculate similarity: for example, sum of element-wise product of symptom indicators
+  val similarity = symptoms1.zip(symptoms2).map { case (s1, s2) => s1 * s2 }.sum
+  
+  if (similarity > 0) {
+    edgesBuffer += Edge(id1, id2, similarity)
+    edgesBuffer += Edge(id2, id1, similarity)  // For an undirected graph
+  }
+}
+
+val edges = spark.sparkContext.parallelize(edgesBuffer)
+
+val graph = Graph(vertices, edges)
+println(s"Number of vertices: ${graph.vertices.count()}")
+println(s"Number of edges: ${graph.edges.count()}")
+
+
