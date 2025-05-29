@@ -1,0 +1,12 @@
+=======================================================
+Statistics
+-------------------------------------------------------
+Kappa                                            0.499
+Accuracy                                         79.8326%
+Reliability                                      84.8699%
+Reliability (standard deviation)                 0.0361
+Weighted precision                               0.75
+Weighted recall                                  0.76
+Weighted F1 score                                0.75
+
+25/03/10 12:07:45 INFO MahoutDriver: Program took 11239 ms (Minutes: 0.18731666666666666)

@@ -1,0 +1,1 @@
+Pregnancies:12 Glucose:151 BloodPressure:70 SkinThickness:40 Insulin:271 BMI:41.8 DiabetesPedigreeFunction:0.742 Age:38 Outcome:1

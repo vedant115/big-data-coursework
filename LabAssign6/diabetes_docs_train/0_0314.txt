@@ -1,0 +1,1 @@
+Pregnancies:0 Glucose:125 BloodPressure:96 SkinThickness:0 Insulin:0 BMI:22.5 DiabetesPedigreeFunction:0.262 Age:21 Outcome:0
