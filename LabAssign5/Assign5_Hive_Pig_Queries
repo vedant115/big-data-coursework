@@ -1,0 +1,211 @@
+** HIVE **
+CREATE TABLE healthcare(
+    Name STRING,
+    Age INT,
+    Gender STRING,
+    Blood_Type STRING,
+    Medical_Condition STRING,
+    Date_of_Admission STRING,
+    Doctor STRING,
+    Hospital STRING,
+    Insurance_Provider STRING,
+    Billing_Amount DOUBLE,
+    Room_Number STRING,
+    Admission_Type STRING,
+    Discharge_Date STRING,
+    Medication STRING,
+    Test_Results STRING
+) ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' STORED AS TEXTFILE;
+
+LOAD DATA LOCAL INPATH '/path/to/healthcare_dataset.csv' INTO TABLE healthcare;
+
+------------------------------------------------------
+
+** PIG **
+-- Load the dataset from HDFS
+healthcare_data = LOAD '/Healthcare_Assign/input/healthcare_dataset.csv' USING PigStorage(',') 
+                   AS (Name:chararray, Age:int, Gender:chararray, BloodType:chararray, 
+                       MedicalCondition:chararray, DateOfAdmission:chararray, Doctor:chararray, 
+                       Hospital:chararray, InsuranceProvider:chararray, BillingAmount:float, 
+                       RoomNumber:int, AdmissionType:chararray, DischargeDate:chararray, 
+                       Medication:chararray, TestResults:chararray);
+
+-- Display the first 10 records
+DUMP healthcare_data LIMIT 10;
+--------------------------------------------------
+
+	**************************
+	*     SIMPLE QUERIES     *
+	**************************
+
+--------------------------------------------------
+
+Query 1: Select all records where Age is greater than 40 in both Pig and Hive.
+Hive:
+SELECT * FROM healthcare WHERE Age > 40;
+
+Pig:
+filtered_data = FILTER healthcare_data BY Age > 40;
+DUMP filtered_data;
+
+---------------------------------------------------
+Query 2: Find the average Billing_Amount for each Hospital.
+
+Hive:
+SELECT Hospital, AVG(Billing_Amount) FROM healthcare GROUP BY Hospital;
+
+Pig:
+group_data = GROUP healthcare_data BY Hospital;
+avg_billing = FOREACH group_data GENERATE group, AVG(healthcare_data.Billing_Amount);
+DUMP avg_billing;
+
+---------------------------------------------------
+Query 3: Find the number of patients by Insurance_Provider.
+
+Hive:
+SELECT insuranceprovider, COUNT(*) FROM healthcare GROUP BY insuranceprovider;
+
+Pig:
+group_data = GROUP healthcare_data BY Insurance_Provider;
+count_patients = FOREACH group_data GENERATE group, COUNT(healthcare_data);
+DUMP count_patients;
+
+---------------------------------------------------
+Query 4: Select Name and Room_Number for patients who are admitted with a certain Medical_Condition.
+
+Hive:
+SELECT name, roomnumber FROM healthcare WHERE medicalcondition = 'Diabetes';
+
+Pig:
+filtered_condition = FILTER healthcare_data BY Medical_Condition == 'Diabetes';
+selected_data = FOREACH filtered_condition GENERATE Name, Room_Number;
+DUMP selected_data;
+
+----------------------------------------------------
+Query 5: Retrieve distinct Gender values.
+
+Hive:
+SELECT DISTINCT gender FROM healthcare;
+
+Pig:
+distinct_genders = DISTINCT healthcare_data;
+DUMP distinct_genders;
+
+-----------------------------------------------------
+Query 6: Select the top 10 Billing_Amount values.
+
+Hive:
+SELECT * FROM healthcare ORDER BY billingamount DESC LIMIT 10;
+
+Pig:
+ordered_data = ORDER healthcare_data BY Billing_Amount DESC;
+top_10_billing = LIMIT ordered_data 10;
+DUMP top_10_billing;
+
+----------------------------------------------------
+Query 7: Find the average Age of patients by Doctor.
+
+Hive:
+SELECT doctor, AVG(age) FROM healthcare GROUP BY doctor;
+
+Pig:
+group_by_doctor = GROUP healthcare_data BY Doctor;
+avg_age_by_doctor = FOREACH group_by_doctor GENERATE group, AVG(healthcare_data.Age);
+DUMP avg_age_by_doctor;
+
+---------------------------------------------------
+
+
+**************************
+*     COMPLEX QUERIES    *
+**************************
+
+
+---------------------------------------------------
+Query 1: Identifying the Top 5 Most Expensive Admissions (Based on Billing Amount) Along with Patient Details
+
+Hive:
+SELECT name, age, gender, medicalcondition, hospital, admissiontype, billingamount
+FROM healthcare
+ORDER BY billingamount DESC
+LIMIT 5;
+
+
+Pig:
+sorted_data = ORDER healthcare_data BY BillingAmount DESC;
+top_expensive = LIMIT sorted_data 5;
+DUMP top_expensive;
+
+-------------------------------------------------
+Query 2: Filter records with specific Discharge_Date and Medical_Condition.
+
+Hive:
+SELECT * FROM healthcare WHERE dischargedate = '2021-05-01' AND medicalcondition = 'Cancer';
+
+Pig:
+filtered_data = FILTER healthcare_data BY Discharge_Date == '2021-05-01' AND Medical_Condition == 'Cancer';
+DUMP filtered_data;
+
+------------------------------------------------
+Query 3: Group data by Admission Type and calculate the average Billing_Amount.
+
+Hive:
+SELECT admissiontype, AVG(billingamount) FROM healthcare GROUP BY admissiontype;
+
+Pig:
+grouped_by_type = GROUP healthcare_data BY Admission_Type;
+avg_billing = FOREACH grouped_by_type GENERATE group, AVG(healthcare_data.Billing_Amount);
+DUMP avg_billing;
+
+------------------------------------------------
+Query 4: Find the total Billing_Amount for each Room Number where the condition is Critical.
+
+Hive:
+SELECT roomnumber, SUM(billingamount) FROM healthcare WHERE medicalcondition = 'Arthritis' GROUP BY roomnumber;
+
+Pig:
+critical_condition = FILTER healthcare_data BY Medical_Condition == 'Arthritis';
+grouped_room = GROUP critical_condition BY Room_Number;
+total_billing = FOREACH grouped_room GENERATE group, SUM(critical_condition.Billing_Amount);
+DUMP total_billing;
+
+-------------------------------------------------
+Query 5: Find the records where Billing_Amount is above a threshold (e.g., 5000).
+
+Hive:
+SELECT * FROM healthcare WHERE billingamount > 5000;
+
+Pig:
+high_billing = FILTER healthcare_data BY Billing_Amount > 5000;
+DUMP high_billing;
+
+-----------------------------------------------
+Query 6: Finding the Number of Patients per Medical Condition, Grouped by Gender, and Sorted in Descending Order
+
+Hive:
+SELECT medicalcondition, gender, COUNT(*) AS patient_count
+FROM healthcare
+GROUP BY medicalcondition, gender
+ORDER BY patient_count DESC;
+
+Pig:
+grouped_data = GROUP healthcare_data BY (Medical_Condition, Gender);
+patient_count = FOREACH grouped_data GENERATE group.Medical_Condition AS medicalcondition, group.Gender AS gender, COUNT(healthcare_data) AS patient_count;
+sorted_data = ORDER patient_count BY patient_count DESC;
+DUMP sorted_data;
+
+-----------------------------------------------
+Query 7: Union two different conditions and calculate the total number of records.
+
+Hive:
+SELECT * FROM healthcare WHERE medicalcondition = 'Cancer'
+UNION
+SELECT * FROM healthcare WHERE medicalcondition = 'Diabetes';
+
+Pig:
+cancer_data = FILTER healthcare_data BY Medical_Condition == 'Cancer';
+diabetes_data = FILTER healthcare_data BY Medical_Condition == 'Diabetes';
+union_data = UNION cancer_data, diabetes_data;
+DUMP union_data;
+
+------------------------------------------------
