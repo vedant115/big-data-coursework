@@ -1,0 +1,150 @@
+val df = spark.read.option("header", "true").csv("path_to_your_file.csv")
+
+val cleanedDF = df.columns.foldLeft(df)((tempDF, colName) => 
+  tempDF.withColumnRenamed(colName, colName.trim.replaceAll("\\s+", "_").replaceAll("^_|_$", "").toLowerCase))
+
+// Show schema after renaming
+cleanedDF.printSchema()
+
+import org.apache.spark.graphx.{VertexId, Edge, Graph}
+
+// Create an RDD of vertices from the cleaned DataFrame.
+val vertices = cleanedDF.rdd.map { row =>
+  // Extract: vertex id, (name, gender, symptom data)
+  val vertexId = row.getAs[Int]("no").toLong
+  val name = row.getAs[String]("name")
+  val gender = row.getAs[String]("gender")
+  
+  // Collect symptom indicators (adjusted column names)
+  val symptoms = Seq(
+    row.getAs[Int]("fever_for_two_weeks"),
+    row.getAs[Int]("coughing_blood"),
+    row.getAs[Int]("sputum_mixed_with_blood"),
+    row.getAs[Int]("night_sweats"),
+    row.getAs[Int]("chest_pain"),
+    row.getAs[Int]("back_pain_in_certain_parts"),
+    row.getAs[Int]("shortness_of_breath"),
+    row.getAs[Int]("weight_loss"),
+    row.getAs[Int]("body_feels_tired"),
+    row.getAs[Int]("lumps_that_appear_around_the_armpits_and_neck"),
+    row.getAs[Int]("cough_and_phlegm_continuously_for_two_weeks_to_four_weeks"),
+    row.getAs[Int]("swollen_lymph_nodes"),
+    row.getAs[Int]("loss_of_appetite")
+  )
+  
+  (vertexId, (name, gender, symptoms))
+}
+
+// Create a list of vertices
+val verticesList = vertices.collect()
+import scala.collection.mutable.ArrayBuffer
+
+// Create edges by comparing each pair of vertices
+val edgesBuffer = new ArrayBuffer[Edge[Int]]()
+
+for(i <- verticesList.indices; j <- (i+1) until verticesList.length) {
+  val (id1, (_, _, symptoms1)) = verticesList(i)
+  val (id2, (_, _, symptoms2)) = verticesList(j)
+  // Calculate similarity: sum of matching symptom indicators
+  val similarity = symptoms1.zip(symptoms2).map { case (s1, s2) => s1 * s2 }.sum
+  // Create an edge if there is at least one common symptom
+  if(similarity > 0) {
+    edgesBuffer += Edge(id1, id2, similarity)
+    edgesBuffer += Edge(id2, id1, similarity)  // If the graph is undirected
+  }
+}
+val edges = spark.sparkContext.parallelize(edgesBuffer)
+
+
+
+val graph = Graph(vertices, edges)
+
+// Verify counts
+println(s"Number of vertices: ${graph.vertices.count()}")
+println(s"Number of edges: ${graph.edges.count()}")
+
+
+
+import org.apache.spark.graphx.PageRank
+
+// Measure execution time for PageRank
+val startTimePageRank = System.nanoTime()
+
+// Perform PageRank
+val pageRankResult = graph.pageRank(0.0001)  // Convergence threshold
+
+// Measure elapsed time
+val endTimePageRank = System.nanoTime()
+val pageRankTime = (endTimePageRank - startTimePageRank) / 1e9  // in seconds
+
+println(s"PageRank Execution Time: $pageRankTime seconds")
+
+// Show top 10 nodes with highest PageRank values
+pageRankResult.vertices.takeOrdered(10)(Ordering[Double].reverse.on(_._2)).foreach {
+  case (vertexId, rank) => println(s"Vertex $vertexId has rank $rank")
+}
+
+
+// Measure execution time for Community Detection
+val startTimeCommunityDetection = System.nanoTime()
+
+// Perform community detection
+val communities = graph.connectedComponents()
+
+// Measure elapsed time
+val endTimeCommunityDetection = System.nanoTime()
+val communityDetectionTime = (endTimeCommunityDetection - startTimeCommunityDetection) / 1e9  // in seconds
+
+println(s"Community Detection Execution Time: $communityDetectionTime seconds")
+
+// Show communities (groupings of nodes with the same component id)
+communities.vertices.take(10).foreach {
+  case (vertexId, componentId) => println(s"Vertex $vertexId belongs to community $componentId")
+}
+
+
+// Measure execution time for Connected Components
+val startTimeConnectedComponents = System.nanoTime()
+
+// Get connected components
+val connectedComponents = graph.connectedComponents()
+
+// Measure elapsed time
+val endTimeConnectedComponents = System.nanoTime()
+val connectedComponentsTime = (endTimeConnectedComponents - startTimeConnectedComponents) / 1e9  // in seconds
+
+println(s"Connected Components Execution Time: $connectedComponentsTime seconds")
+
+// Show connected components
+connectedComponents.vertices.take(10).foreach {
+  case (vertexId, componentId) => println(s"Vertex $vertexId is in connected component $componentId")
+}
+
+import org.apache.spark.graphx.{Graph, VertexId}
+import org.apache.spark.graphx.lib.ShortestPaths // Import the ShortestPaths library
+
+// Measure execution time for Shortest Path
+val startTimeShortestPath = System.nanoTime()
+
+// Specify source and target vertices
+val sourceVertexId: VertexId = 1L
+val targetVertexId: VertexId = 10L
+
+// Compute shortest paths from the source vertex using ShortestPaths.run()
+val shortestPaths = ShortestPaths.run(graph, Seq(sourceVertexId))
+
+// Measure elapsed time
+val endTimeShortestPath = System.nanoTime()
+val shortestPathTime = (endTimeShortestPath - startTimeShortestPath) / 1e9
+println(s"Shortest Path Execution Time: $shortestPathTime seconds")
+
+// Extract the shortest path distance from source to target
+shortestPaths.vertices.filter(_._1 == targetVertexId).collect().foreach {
+  case (vertexId, pathMap) =>
+    pathMap.get(sourceVertexId) match {
+      case Some(distance) =>
+        println(s"Shortest path distance from $sourceVertexId to $targetVertexId: $distance")
+      case None =>
+        println(s"No path exists from $sourceVertexId to $targetVertexId.")
+    }
+}
