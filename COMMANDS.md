@@ -58,7 +58,7 @@ hadoop jar /home/vedant/hadoop-3.4.1/share/hadoop/tools/lib/hadoop-streaming-3.4
 
 ## 🐷 Apache Pig
 ```bash
--- Load CSV data
+# Load CSV data
 healthcare_data = LOAD '/Healthcare_Assign/input/healthcare_dataset.csv' 
 USING PigStorage(',') AS (
     Name:chararray, Age:int, Gender:chararray, BloodType:chararray, 
@@ -68,23 +68,23 @@ USING PigStorage(',') AS (
     Medication:chararray, TestResults:chararray
 );
 
--- Filter rows
+# Filter rows
 filtered_data = FILTER healthcare_data BY MedicalCondition == 'Diabetes';
 
--- Group data by gender
+# Group data by gender
 grouped_data = GROUP filtered_data BY Gender;
 
--- Display results
+# Display results
 DUMP grouped_data;
 ```
 ---
 
 ## 🐝 Apache Hive
 ```bash
--- Connect using Beeline
+# Connect using Beeline
 beeline -u jdbc:hive2://
 
--- Create table
+# Create table
 CREATE TABLE healthcare (
   Name STRING, Age INT, Gender STRING, BloodType STRING, MedicalCondition STRING,
   DateOfAdmission STRING, Doctor STRING, Hospital STRING, InsuranceProvider STRING,
@@ -95,10 +95,10 @@ ROW FORMAT DELIMITED
 FIELDS TERMINATED BY ',' 
 STORED AS TEXTFILE;
 
--- Load data into table
+# Load data into table
 LOAD DATA INPATH '/Healthcare_Assign/input/healthcare_dataset.csv' INTO TABLE healthcare;
 
--- Query data
+# Query data
 SELECT * FROM healthcare WHERE MedicalCondition = 'Diabetes';
 ```
 ---
