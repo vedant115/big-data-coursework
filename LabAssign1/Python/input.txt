@@ -1,0 +1,1 @@
+Hadoop is a framework that allows distributed processing of large data sets. Hadoop MapReduce can process data in parallel across clusters. 
